@@ -1,69 +1,100 @@
-# 💬 Rudimentary Chat — Java TCP Sockets & Multi-Threaded Swing Messenger
+# 💬 RudimentaryChat Studio 2.0 — Encrypted Full-Duplex TCP Messenger & Server Dashboard
 
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-4B32C3?logo=read-the-docs&logoColor=white)](https://deepwiki.com/Drakonosinc/rudimentary_chat)
 ![Java](https://img.shields.io/badge/Java-SE_8%2B-ED8B00?logo=openjdk&logoColor=white)
-![UI](https://img.shields.io/badge/GUI-Java_Swing-007396)
-![Networking](https://img.shields.io/badge/Network-TCP_Sockets-blue)
+![Security](https://img.shields.io/badge/Crypto-AES--GCM_Authenticated-10B981)
+![UI](https://img.shields.io/badge/GUI-Dark_Swing_Studio-6366F1)
+![Networking](https://img.shields.io/badge/Sockets-Persistent_Full--Duplex_TCP-06B6D4)
 
-A multi-threaded **Client-Server LAN Chat Application** written in **Java SE** using **TCP Sockets (`java.net.Socket` / `ServerSocket`)**, **Java Object Serialization (`ObjectInputStream` / `ObjectOutputStream`)**, and a **Java Swing** desktop GUI.
-
-It features automatic online peer discovery (`EnvioOnline` window listener), dynamic IP routing via a central relay server, and asynchronous background listener threads (`Runnable`).
+**RudimentaryChat Studio 2.0** is a modular, multi-threaded **TCP Socket Communication & File-Sharing Suite** built in pure **Java SE** (zero external dependencies). It features persistent full-duplex client connections, end-to-end **AES-GCM** authenticated encryption, public channels, 1-to-1 private direct messages (`DM`), binary file transfers, slash commands, and a real-time **Server Control Center & Packet Inspector**.
 
 ---
 
-## 🏗️ System Architecture & Communication Flow
+## 🚀 Key Capabilities
+
+| Module | Description |
+| :--- | :--- |
+| **Persistent Full-Duplex TCP Engine** | Powered by `ExecutorService` and `ConcurrentHashMap`. Multiple clients can run simultaneously on the same machine (`127.0.0.1`) or across a LAN without client-side port collisions. |
+| **End-to-End `AES-GCM` Encryption** | Built-in `CryptoEngine` (`AES/GCM/NoPadding` with `SHA-256` key derivation and random 96-bit IV per packet). Encrypts both text messages and binary file transfers while keeping the central server zero-knowledge. |
+| **Public Channels & Private DMs** | Switch seamlessly between public channels (`#general`, `#dev`, `#gaming`, `#offtopic`) and 1-to-1 private conversations by clicking any online user in the sidebar or using `/w <user> <msg>`. |
+| **Encrypted File & Image Sharing** | Send any file across the TCP socket (`FILE_TRANSFER`), automatically encrypted with AES-GCM and prompted for download on the recipient's desktop. |
+| **Server Dashboard & Packet Inspector** | Live telemetry cards (`Usuarios Online`, `Mensajes Enrutados`, `Archivos Transferidos`, `Paquetes AES-GCM`), active client table, 1-click **Kick User** moderation, and **Global Broadcast Announcements**. |
+| **Slash Commands & Transcript Export** | Supports `/help`, `/w <user> <msg>`, `/roll` (1–100 dice roller), `/clear`, live presence status (`Online`, `Ausente`, `Ocupado`), and 1-click chat history export (`.txt`). |
+
+---
+
+## 🏗️ System Architecture
 
 ```mermaid
-sequenceDiagram
-    participant C1 as Cliente A (Port 8888)
-    participant S as Servidor Central (Port 9999)
-    participant C2 as Cliente B (Port 8888)
+flowchart LR
+    subgraph Clients["Desktop Clients (Swing Dark UI)"]
+        C1["Cliente A (Alice)<br/>AES-GCM + Reader Thread"]
+        C2["Cliente B (Bob)<br/>AES-GCM + Reader Thread"]
+    end
 
-    Note over C1,S: 1. Online Presence Handshake
-    C1->>S: WindowOpened -> Paquete_envio(mensaje="online")
-    S->>S: Extracts remote IP & updates active peer list (listaip)
-    S-->>C1: Broadcasts updated IP list (port 8888)
-    S-->>C2: Broadcasts updated IP list (port 8888)
+    subgraph Server["Central TCP Server (Port 9999)"]
+        SE["ChatServerEngine<br/>ExecutorService + ConcurrentHashMap"]
+        SD["ServerDashboardFrame<br/>Live Telemetry, Kick & Broadcast"]
+    end
 
-    Note over C1,C2: 2. Direct Peer Message Relay
-    C1->>S: Paquete_envio(nick, targetIp, mensaje) -> Port 9999
-    S->>S: Logs message in Server Console JTextArea
-    S->>C2: Forwards Paquete_envio -> targetIp:8888
-    C2->>C2: Appends "nick: mensaje" to Chat JTextArea
+    C1 <-->|"Persistent TCP Socket<br/>(ChatPacket Stream)"| SE
+    C2 <-->|"Persistent TCP Socket<br/>(ChatPacket Stream)"| SE
+    SE <--> SD
+```
+
+```text
+rudimentary_chat/
+├── Servidor.java                              # Server entry point (launches ServerDashboardFrame)
+├── Cliente.java                               # Client entry point (launches ClientMessengerFrame)
+├── src/
+│   └── chat/
+│       ├── protocol/
+│       │   ├── PacketType.java                # Wire frame types (CONNECT, CHAT_MESSAGE, PRIVATE_MESSAGE, FILE_TRANSFER...)
+│       │   ├── UserStatus.java                # Presence states (ONLINE, AWAY, BUSY)
+│       │   ├── UserInfo.java                  # Immutable participant descriptor
+│       │   └── ChatPacket.java                # Serializable protocol envelope
+│       ├── security/
+│       │   └── CryptoEngine.java              # Authenticated AES-GCM encryption & SHA-256 key derivation
+│       ├── server/
+│       │   ├── ChatServerEngine.java          # Multi-threaded TCP relay engine & moderation controller
+│       │   └── ServerDashboardFrame.java      # Dark Swing Server Control Center & Packet Inspector
+│       ├── client/
+│       │   ├── ChatClientConnection.java      # Persistent full-duplex client socket & AES-GCM adapter
+│       │   └── ClientMessengerFrame.java      # Dark Swing Messenger UI (Channels, DMs, Files, Slash Commands)
+│       └── ui/
+│           └── DarkTheme.java                 # Shared Dark Studio color palette & component factory
+└── tests/
+    └── ChatIntegrationTest.java               # Automated headless integration test suite (5/5 tests)
 ```
 
 ---
 
-## 📦 Core Components
+## ⚡ Quick Start
 
-| Class | File | Responsibility |
-| :--- | :--- | :--- |
-| `Servidor` / `Marco_servidor` | `Servidor.java` | Launches the central relay GUI window and starts the background listener thread. |
-| `Lamina_servidor` | `Servidor.java` | Implements `Runnable`; listens on **TCP port `9999`**, tracks connected client IPs, broadcasts online peer lists, and routes chat packets to target clients on port `8888`. |
-| `Cliente` / `Marco_cliente` | `Cliente.java` | Initializes the client chat window and registers the `EnvioOnline` window lifecycle hook. |
-| `EnvioOnline` | `Cliente.java` | Extends `WindowAdapter`; automatically transmits an `"online"` registration packet to the server as soon as the client window opens. |
-| `Lamina_cliente` | `Cliente.java` | Prompts for the user's nickname, renders the active peer `JComboBox`, sends serialized messages on button click, and runs a `ServerSocket(8888)` thread to receive incoming messages. |
-| `Paquete_envio` | `Cliente.java` | `Serializable` Data Transfer Object (DTO) encapsulating `nick`, target `ip`, `mensaje`, and the `ArrayList<String> ips` roster. |
+### 1. Compile Sources
 
----
-
-## 🚀 Compilation & Execution
-
-### 1. Configure Network IP (Optional for Localhost Testing)
-In `Cliente.java` (lines 41 and 108), set the server IP address to `127.0.0.1` for local testing or to your LAN server's IPv4 address (default `192.168.1.2`).
-
-### 2. Compile Sources
 ```bash
-javac Cliente.java Servidor.java
+mkdir bin
+javac -encoding UTF-8 -d bin -sourcepath ".;src;tests" Servidor.java Cliente.java tests/ChatIntegrationTest.java
 ```
 
-### 3. Start the Central Server First
+### 2. Start the Central Server Dashboard
+
 ```bash
-java Servidor
+java -cp bin Servidor
 ```
 
-### 4. Launch One or More Clients
+### 3. Launch Multiple Clients (on the same PC or across LAN)
+
+Open two or more terminals and run:
+
 ```bash
-java Cliente
+java -cp bin Cliente 127.0.0.1 9999 Alice
+java -cp bin Cliente 127.0.0.1 9999 Bob
 ```
-Enter your nickname when prompted, select an online peer IP from the dropdown menu, type a message, and click **Enviar**.
+
+### 4. Run the Automated Integration Test Suite
+
+```bash
+java -cp bin ChatIntegrationTest
+```
